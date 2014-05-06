@@ -1,0 +1,46 @@
+<html>
+  <head>
+    <title>Admin Directory API Sample Application</title>
+  </head>
+  <body>
+
+    {% if has_credentials %}
+    <p>
+      Chromebooks:
+    </p>
+    <table border="1">
+      <thead>
+        <th>Serial Number</th>
+        <th>Mac Address</th>
+        <th>Status</th>
+        <th>Enrolled</th>
+        <th>Last Sync</th>
+        <th>Registered User</th>
+      </thead>
+      <tbody>
+        {% for device in devices %}
+        <tr>
+          <td><a href="https://admin.google.com/prspne.catholic.edu.au/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId={{ device.deviceId }}"><code>{{ device.serialNumber }}</code></a></td>
+          <td><code>{{ device.macAddress }}</code></td>
+          <td>{{ device.status }}</td>
+          <td>{{ device.lastEnrollmentTime }}</td>
+          <td>{{ device.lastSync }}</td>
+          <td>{{ device.annotatedUser }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    <p>
+      You are almost there, for the final step follow the link below and grant this application permission to access your data using the Admin Directory API.
+    </p>
+    <blockquote>
+      <a href="{{ url }}">{{ url }}</a>
+    </blockquote>
+    {% endif %}
+    <p>
+      You can always <a href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">revoke</a> permission at any time.
+    </p>
+  </body>
+</html>

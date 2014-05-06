@@ -1,0 +1,4 @@
+*~
+.*.sw?
+*.pyc
+client_secrets.json
