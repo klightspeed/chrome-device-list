@@ -29,15 +29,30 @@ import json
 
 from apiclient import discovery
 from oauth2client import appengine
+from oauth2client.appengine import OAuth2Decorator
 from oauth2client import client
+from oauth2client import clientsecrets
 from google.appengine.api import memcache
 from datetime import datetime
 from datetime import date
 from datetime import timedelta
+from google.appengine.ext import db
 
 import webapp2
 import jinja2
 
+class OAuth2ClientSecret(db.Model)
+  name = db.StringProperty(required=True)
+  auth_uri = db.StringProperty(required=True)
+  client_id = db.StringProperty(required=True)
+  client_secret = db.StringProperty(required=True)
+  token_uri = db.StringProperty(required=True)
+  redirect_uris = db.StringListProperty(required=True)
+  auth_provider_x509_cert_url = db.StringProperty(required=False)
+  client_email = db.StringProperty(required=False)
+  client_x509_cert_url = db.StringProperty(required=False)
+  javascript_origins = db.StringListProperty(required=False)
+  revoke_uri = db.StringProperty(required=False)
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -66,15 +81,50 @@ href="https://code.google.com/apis/console">APIs Console</a>.
 </p>
 """ % CLIENT_SECRETS
 
+CLIENT_SECRETS_NAMESPACE = "tsvceo-chrome-device-mgmt:clientsecrets#ns"
+client_secret = memcache.get(CLIENT_SECRETS, namespace=CLIENT_SECRETS_NAMESPACE)
+
+if client_secret is None:
+  if os.path.exists(CLIENT_SECRETS):
+    client_type, client_info = clientsecrets.loadfile(CLIENT_SECRETS, memcache)
+    client_secret = OAuth2ClientSecret(
+        name = client_type,
+        auth_uri = client_info.get('auth_uri'),
+        client_id = client_info.get('client_id'),
+        client_secret = client_info.get('client_secret'),
+        token_uri = client_info.get('token_uri'),
+        redirect_uris = client_info.get('redirect_uris'),
+        auth_provider_x509_cert_url = client_info.get('auth_provider_x509_cert_url'),
+        client_email = client_info.get('client_email'),
+        client_x509_cert_url = client_info.get('client_x509_cert_url'),
+        javascript_origins = client_info.get('javascript_origins'),
+        revoke_uri = client_info.get('revoke_uri')
+        )
+    memcache.set(CLIENT_SECRETS, client_secret, namespace=CLIENT_SECRETS_NAMESPACE)
+    client_secret.put()
+  else:
+    client_secrets = db.GqlQuery("SELECT * FROM OAuth2ClientSecret")
+    for cs in client_secrets:
+      client_secret = cs
+      memcache.set(CLIENT_SECRETS, client_secret, namespace=CLIENT_SECRETS_NAMESPACE)
+
+if client_secret is None:
+  decorator = appengine.oauth2decorator(message = MISSING_CLIENT_SECRETS_MESSAGE)
+else:
+  decorator = OAuth2Decorator(
+      client_id = client_secret.client_id,
+      client_secret = client_secret.client_secret,
+      scope=[
+        'https://www.googleapis.com/auth/admin.directory.device.chromeos',
+        'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
+        'https://www.googleapis.com/auth/admin.reports.usage.readonly',
+      ],
+      auth_uri = client_secret.auth_uri,
+      token_uri = client_secret.token_uri,
+      message=MISSING_CLIENT_SECRETS_MESSAGE
+      )
+
 http = httplib2.Http(memcache)
-decorator = appengine.oauth2decorator_from_clientsecrets(
-    CLIENT_SECRETS,
-    scope=[
-      'https://www.googleapis.com/auth/admin.directory.device.chromeos',
-      'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
-      'https://www.googleapis.com/auth/admin.reports.usage.readonly',
-    ],
-    message=MISSING_CLIENT_SECRETS_MESSAGE)
 
 class MainHandler(webapp2.RequestHandler):
 
