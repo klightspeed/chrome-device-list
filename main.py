@@ -101,7 +101,9 @@ class MainHandler(webapp2.RequestHandler):
             'status': device['status'],
             'lastEnrollmentTime': 'Never' if lastEnrollmentTime is None else lastEnrollmentTime.strftime('%a, %d %b %Y, %H:%M UTC'),
             'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
-            'annotatedUser': device['annotatedUser'] if 'annotatedUser' in device else '???',
+            'annotatedUser': device['annotatedUser'] if 'annotatedUser' in device else '',
+	    'annotatedLocation': device['annotatedLocation'] if 'annotatedLocation' in device else '',
+	    'notes': device['notes'] if 'notes' in device else '',
             'deviceId': device['deviceId']
             })
         if 'nextPageToken' in devicelist:

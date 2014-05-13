@@ -16,6 +16,8 @@
         <th>Enrolled</th>
         <th>Last Sync</th>
         <th>Registered User</th>
+	<th>Registered Location</th>
+	<th>Notes</th>
       </thead>
       <tbody>
         {% for device in devices %}
@@ -26,6 +28,8 @@
           <td>{{ device.lastEnrollmentTime }}</td>
           <td>{{ device.lastSync }}</td>
           <td>{{ device.annotatedUser }}</td>
+	  <td>{{ device.annotatedLocation }}</td>
+	  <td>{{ device.notes }}</td>
         </tr>
         {% endfor %}
       </tbody>
