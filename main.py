@@ -41,18 +41,18 @@ from google.appengine.ext import db
 import webapp2
 import jinja2
 
-class OAuth2ClientSecret(db.Model)
+class OAuth2ClientSecret(db.Model):
   name = db.StringProperty(required=True)
   auth_uri = db.StringProperty(required=True)
   client_id = db.StringProperty(required=True)
   client_secret = db.StringProperty(required=True)
   token_uri = db.StringProperty(required=True)
   redirect_uris = db.StringListProperty(required=True)
-  auth_provider_x509_cert_url = db.StringProperty(required=False)
-  client_email = db.StringProperty(required=False)
-  client_x509_cert_url = db.StringProperty(required=False)
-  javascript_origins = db.StringListProperty(required=False)
-  revoke_uri = db.StringProperty(required=False)
+  auth_provider_x509_cert_url = db.StringProperty()
+  client_email = db.StringProperty()
+  client_x509_cert_url = db.StringProperty()
+  javascript_origins = db.StringListProperty()
+  revoke_uri = db.StringProperty()
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
