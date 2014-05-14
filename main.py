@@ -37,12 +37,13 @@ from datetime import datetime
 from datetime import date
 from datetime import timedelta
 from google.appengine.ext import db
+from google.appengine.ext import ndb
 
 import webapp2
 import jinja2
 
 class OAuth2ClientSecret(db.Model):
-  name = db.StringProperty(required=True)
+  client_type = db.StringProperty(required=True)
   auth_uri = db.StringProperty(required=True)
   client_id = db.StringProperty(required=True)
   client_secret = db.StringProperty(required=True)
@@ -54,16 +55,24 @@ class OAuth2ClientSecret(db.Model):
   javascript_origins = db.StringListProperty()
   revoke_uri = db.StringProperty()
 
+class DeviceCache(ndb.Model):
+  customerid = ndb.StringProperty(required=True)
+  updated = ndb.DateTimeProperty(required=True)
+  devices = ndb.PickleProperty(required=True)
+
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     autoescape=True,
     extensions=['jinja2.ext.autoescape'])
+
+DEVICE_CACHE_NAMESPACE = "tsvceo-chrome-device-mgmt:devicecache#ns"
 
 # CLIENT_SECRETS, name of a file containing the OAuth 2.0 information for this
 # application, including client_id and client_secret, which are found
 # on the API Access tab on the Google APIs
 # Console <http://code.google.com/apis/console>
 CLIENT_SECRETS = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
+CLIENT_SECRETS_NAMESPACE = "tsvceo-chrome-device-mgmt:clientsecrets#ns"
 
 # Helpful message to display in the browser if the CLIENT_SECRETS file
 # is missing.
@@ -81,14 +90,14 @@ href="https://code.google.com/apis/console">APIs Console</a>.
 </p>
 """ % CLIENT_SECRETS
 
-CLIENT_SECRETS_NAMESPACE = "tsvceo-chrome-device-mgmt:clientsecrets#ns"
 client_secret = memcache.get(CLIENT_SECRETS, namespace=CLIENT_SECRETS_NAMESPACE)
 
 if client_secret is None:
   if os.path.exists(CLIENT_SECRETS):
     client_type, client_info = clientsecrets.loadfile(CLIENT_SECRETS, memcache)
     client_secret = OAuth2ClientSecret(
-        name = client_type,
+        key_name = "site",
+        client_type = client_type,
         auth_uri = client_info.get('auth_uri'),
         client_id = client_info.get('client_id'),
         client_secret = client_info.get('client_secret'),
@@ -103,45 +112,49 @@ if client_secret is None:
     memcache.set(CLIENT_SECRETS, client_secret, namespace=CLIENT_SECRETS_NAMESPACE)
     client_secret.put()
   else:
-    client_secrets = db.GqlQuery("SELECT * FROM OAuth2ClientSecret")
-    for cs in client_secrets:
-      client_secret = cs
-      memcache.set(CLIENT_SECRETS, client_secret, namespace=CLIENT_SECRETS_NAMESPACE)
+    client_secret = db.GqlQuery("SELECT * FROM OAuth2ClientSecret").get()
+    memcache.set(CLIENT_SECRETS, client_secret, namespace=CLIENT_SECRETS_NAMESPACE)
 
-if client_secret is None:
-  decorator = appengine.oauth2decorator(message = MISSING_CLIENT_SECRETS_MESSAGE)
-else:
-  decorator = OAuth2Decorator(
-      client_id = client_secret.client_id,
-      client_secret = client_secret.client_secret,
-      scope=[
-        'https://www.googleapis.com/auth/admin.directory.device.chromeos',
-        'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
-        'https://www.googleapis.com/auth/admin.reports.usage.readonly',
-      ],
-      auth_uri = client_secret.auth_uri,
-      token_uri = client_secret.token_uri,
-      message=MISSING_CLIENT_SECRETS_MESSAGE
-      )
+  if client_secret is None:
+    decorator = appengine.oauth2decorator(message = MISSING_CLIENT_SECRETS_MESSAGE)
+  else:
+    decorator = OAuth2Decorator(
+        client_id = client_secret.client_id,
+        client_secret = client_secret.client_secret,
+        scope=[
+          'https://www.googleapis.com/auth/admin.directory.device.chromeos',
+          'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
+          'https://www.googleapis.com/auth/admin.reports.usage.readonly',
+        ],
+        auth_uri = client_secret.auth_uri,
+        token_uri = client_secret.token_uri,
+        message=MISSING_CLIENT_SECRETS_MESSAGE
+        )
 
-http = httplib2.Http(memcache)
 
 class MainHandler(webapp2.RequestHandler):
 
   @decorator.oauth_aware
   def get(self):
     devices = [ ]
-    if (decorator.has_credentials()):
+    http = httplib2.Http()
+
+    if decorator.has_credentials():
       credentials = decorator.get_credentials()
       auth_http = credentials.authorize(http)
-      #reportsservice = discovery.build('admin', 'reports_v1', http=auth_http)
+      reportsservice = discovery.build('admin', 'reports_v1', http=auth_http)
       directoryservice = discovery.build('admin', 'directory_v1', http=auth_http)
-      #date_4daysago = (date.today() - timedelta(4)).isoformat()
-      #custusage = reportsservice.customerUsageReports().get(date=date_4daysago).execute(http=auth_http)
-      #customerid = custusage['usageReports'][0]['entity']['customerId']
+      date_4daysago = (date.today() - timedelta(4)).isoformat()
+      custusage = reportsservice.customerUsageReports().get(date=date_4daysago).execute(http=auth_http)
+      customerid = custusage['usageReports'][0]['entity']['customerId']
       devicelistreq = directoryservice.chromeosdevices().list(customerId="my_customer", orderBy="lastSync", projection="FULL", sortOrder="DESCENDING")
+      
       while True:
-        devicelist = devicelistreq.execute(http=auth_http)
+        try:
+          devicelist = devicelistreq.execute(http=auth_http)
+        except:
+          break
+
         for device in devicelist['chromeosdevices']:
           lastEnrollmentTime = datetime.strptime(device['lastEnrollmentTime'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastEnrollmentTime' in device else None
           lastSync = datetime.strptime(device['lastSync'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastSync' in device else None
@@ -156,22 +169,58 @@ class MainHandler(webapp2.RequestHandler):
 	    'notes': device['notes'] if 'notes' in device else '',
             'deviceId': device['deviceId']
             })
+        
         if 'nextPageToken' in devicelist:
           devicelistreq = directoryservice.chromeosdevices().list_next(devicelistreq, devicelist)
         else:
           break
+
+      devicecache = DeviceCache.query(DeviceCache.customerid == customerid).get()
+
+      if devicecache is None:
+        devicecache = DeviceCache(customerid = customerid)
+
+      devicecache.devices = devices
+      devicecache.updated = datetime.now()
+      cachekey = devicecache.put()
+
     variables = {
-        'url': decorator.authorize_url(),
+        'auth_url': decorator.authorize_url(),
         'has_credentials': decorator.has_credentials(),
         'devices': devices,
+        'customerid': customerid,
+        'cachekey': cachekey.integer_id()
         }
+
     template = JINJA_ENVIRONMENT.get_template('main.html')
     self.response.write(template.render(variables))
 
+class CachedHandler(webapp2.RequestHandler):
+  def get(self):
+    devices = None
+    updated = 'Never'
+    cachekey = self.request.get('id')
+
+    if cachekey is not None:
+      devicecache = DeviceCache.get_by_id(int(cachekey))
+
+      if devicecache is not None:
+        devices = devicecache.devices
+        updated = devicecache.updated.strftime('%a, %d %b %Y, %H:%M UTC')
+
+    variables = {
+        'devices': devices,
+        'updated': updated,
+        'has_devices': devices is not None
+        }
+
+    template = JINJA_ENVIRONMENT.get_template('cache.html')
+    self.response.write(template.render(variables))
 
 app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
+     ('/cache', CachedHandler),
      (decorator.callback_path, decorator.callback_handler()),
     ],
     debug=True)

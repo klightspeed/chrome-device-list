@@ -1,12 +1,11 @@
 <html>
   <head>
-    <title>Google Chrome OS Devices</title>
+    <title>Google Chrome OS Devices (Cached)</title>
   </head>
   <body>
-
-    {% if has_credentials %}
+    {% if has_devices %}
     <p>
-      Chromebooks (<a href="/cache?id={{ cachekey }}">Cache</a>)
+      Cached Chromebooks as of {{ updated }}
     </p>
     <table border="1">
       <thead>
@@ -22,7 +21,7 @@
       <tbody>
         {% for device in devices %}
         <tr>
-          <td><a href="https://admin.google.com/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId={{ device.deviceId }}" target="_blank"><code>{{ device.serialNumber }}</code></a></td>
+          <td><code>{{ device.serialNumber }}</code></td>
           <td><code>{{ device.macAddress }}</code></td>
           <td>{{ device.status }}</td>
           <td>{{ device.lastEnrollmentTime }}</td>
@@ -37,14 +36,8 @@
 
     {% else %}
     <p>
-      You are almost there, for the final step follow the link below and grant this application permission to access your data using the Admin Directory API.
+      No device list is cached.
     </p>
-    <blockquote>
-      <a href="{{ auth_url }}">{{ auth_url }}</a>
-    </blockquote>
     {% endif %}
-    <p>
-      You can always <a href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">revoke</a> permission at any time.
-    </p>
   </body>
 </html>
