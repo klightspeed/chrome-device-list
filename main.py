@@ -137,6 +137,7 @@ class MainHandler(webapp2.RequestHandler):
   @decorator.oauth_aware
   def get(self):
     devices = [ ]
+    statuscount = { }
     http = httplib2.Http()
 
     if decorator.has_credentials():
@@ -162,13 +163,18 @@ class MainHandler(webapp2.RequestHandler):
             'serialNumber': device['serialNumber'],
             'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device else '??') for i in range(0,12,2)),
             'status': device['status'],
+            'osVersion': device.get('osVersion') or '',
             'lastEnrollmentTime': 'Never' if lastEnrollmentTime is None else lastEnrollmentTime.strftime('%a, %d %b %Y, %H:%M UTC'),
             'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
-            'annotatedUser': device['annotatedUser'] if 'annotatedUser' in device else '',
-	    'annotatedLocation': device['annotatedLocation'] if 'annotatedLocation' in device else '',
-	    'notes': device['notes'] if 'notes' in device else '',
+            'annotatedUser': device.get('annotatedUser') or '',
+            'annotatedLocation': device.get('annotatedLocation') or '',
+            'notes': device.get('notes') or '',
             'deviceId': device['deviceId']
             })
+          if device['status'] in statuscount:
+            statuscount[device['status']] += 1
+          else:
+            statuscount[device['status']] = 1
         
         if 'nextPageToken' in devicelist:
           devicelistreq = directoryservice.chromeosdevices().list_next(devicelistreq, devicelist)
@@ -189,7 +195,8 @@ class MainHandler(webapp2.RequestHandler):
         'has_credentials': decorator.has_credentials(),
         'devices': devices,
         'customerid': customerid,
-        'cachekey': cachekey.integer_id()
+        'cachekey': cachekey.integer_id(),
+        'statuscount': statuscount
         }
 
     template = JINJA_ENVIRONMENT.get_template('main.html')
@@ -198,6 +205,7 @@ class MainHandler(webapp2.RequestHandler):
 class CachedHandler(webapp2.RequestHandler):
   def get(self):
     devices = None
+    statuscount = { }
     updated = 'Never'
     cachekey = self.request.get('id')
 
@@ -208,10 +216,20 @@ class CachedHandler(webapp2.RequestHandler):
         devices = devicecache.devices
         updated = devicecache.updated.strftime('%a, %d %b %Y, %H:%M UTC')
 
+    if devices is not None:
+      for device in devices:
+        if device['status'] in statuscount:
+          statuscount[device['status']] += 1
+        else:
+          statuscount[device['status']] = 1
+
+
+
     variables = {
         'devices': devices,
         'updated': updated,
-        'has_devices': devices is not None
+        'has_devices': devices is not None,
+        'statuscount': statuscount
         }
 
     template = JINJA_ENVIRONMENT.get_template('cache.html')

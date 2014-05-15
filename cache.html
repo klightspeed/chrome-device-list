@@ -17,13 +17,14 @@
     <table border="1">
       <thead>
         <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
-        <th><a href="javascript:reorder('devices_tbody',1)">Mac Address</th>
-        <th><a href="javascript:reorder('devices_tbody',2)">Status</th>
-        <th><a href="javascript:reorder('devices_tbody',3,function(v){return Date.parse(v)||0;})">Enrolled</th>
-        <th><a href="javascript:reorder('devices_tbody',4,function(v){return Date.parse(v)||0;})">Last Sync</th>
-        <th><a href="javascript:reorder('devices_tbody',5)">Registered User</th>
-	<th><a href="javascript:reorder('devices_tbody',6)">Registered Location</th>
-	<th><a href="javascript:reorder('devices_tbody',7)">Notes</th>
+	<th><a href="javascript:reorder('devices_tbody',1)">Mac Address</a></th>
+	<th><a href="javascript:reorder('devices_tbody',2)">Status</a></th>
+        <th><a href="javascript:reorder('devices_tbody',3)">OS Version</a></th>
+        <th><a href="javascript:reorder('devices_tbody',4,function(v){return Date.parse(v)||0;})">Enrolled</a></th>
+        <th><a href="javascript:reorder('devices_tbody',5,function(v){return Date.parse(v)||0;})">Last Sync</a></th>
+        <th><a href="javascript:reorder('devices_tbody',6)">Registered User</a></th>
+        <th><a href="javascript:reorder('devices_tbody',7)">Registered Location</a></th>
+        <th><a href="javascript:reorder('devices_tbody',8)">Notes</a></th>
       </thead>
       <tbody id="devices_tbody">
        {% for device in devices %}
@@ -31,11 +32,26 @@
           <td><code>{{ device.serialNumber }}</code></td>
           <td><code>{{ device.macAddress }}</code></td>
           <td>{{ device.status }}</td>
+          <td>{{ device.osVersion }}</td>
           <td>{{ device.lastEnrollmentTime }}</td>
           <td>{{ device.lastSync }}</td>
           <td>{{ device.annotatedUser }}</td>
 	  <td>{{ device.annotatedLocation }}</td>
 	  <td>{{ device.notes }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <table border="1">
+      <thead>
+        <th>Status</th>
+        <th>Count</th>
+      </thead>
+      <tbody>
+        {% for status,count in statuscount.iteritems() %}
+        <tr>
+          <td>{{ status }}</td>
+          <td>{{ count }}</td>
         </tr>
         {% endfor %}
       </tbody>
