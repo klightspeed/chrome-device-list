@@ -1,6 +1,13 @@
 <html>
   <head>
     <title>Google Chrome OS Devices (Cached)</title>
+    <script type="text/javascript" src="/scripts/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="/scripts/util.js"></script>
+    <script type="text/javascript">
+      sorttbodyid = "devices_tbody";
+      sortorder = -1;
+      sortcolumn = 4;
+    </script>
   </head>
   <body>
     {% if has_devices %}
@@ -9,17 +16,17 @@
     </p>
     <table border="1">
       <thead>
-        <th>Serial Number</th>
-        <th>Mac Address</th>
-        <th>Status</th>
-        <th>Enrolled</th>
-        <th>Last Sync</th>
-        <th>Registered User</th>
-	<th>Registered Location</th>
-	<th>Notes</th>
+        <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
+        <th><a href="javascript:reorder('devices_tbody',1)">Mac Address</th>
+        <th><a href="javascript:reorder('devices_tbody',2)">Status</th>
+        <th><a href="javascript:reorder('devices_tbody',3,function(v){return Date.parse(v)||0;})">Enrolled</th>
+        <th><a href="javascript:reorder('devices_tbody',4,function(v){return Date.parse(v)||0;})">Last Sync</th>
+        <th><a href="javascript:reorder('devices_tbody',5)">Registered User</th>
+	<th><a href="javascript:reorder('devices_tbody',6)">Registered Location</th>
+	<th><a href="javascript:reorder('devices_tbody',7)">Notes</th>
       </thead>
-      <tbody>
-        {% for device in devices %}
+      <tbody id="devices_tbody">
+       {% for device in devices %}
         <tr>
           <td><code>{{ device.serialNumber }}</code></td>
           <td><code>{{ device.macAddress }}</code></td>
