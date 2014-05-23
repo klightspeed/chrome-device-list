@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2013 Google Inc.
+# Copyright 2014 Townsville Catholic Education Office
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Starting template for Google App Engine applications.
+"""Google Chrome Device Lister
 
-Use this project as a starting point if you are just beginning to build a Google
-App Engine project. Remember to download the OAuth 2.0 client secrets which can
-be obtained from the Developer Console <https://code.google.com/apis/console/>
-and save them as 'client_secrets.json' in the project directory.
+This web application lists all chrome devices and their various
+properties (including MAC address and OS version) in a sortable
+table so an administrator can keep track of them.  There is also
+a cache function so non-administrators can view those chrome
+device properties.
 """
 
 import httplib2
