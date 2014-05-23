@@ -13,10 +13,7 @@
   <body>
 
     {% if has_credentials %}
-    <p>UserID: {{ userid }}</p>
-    <p>
-      Chromebooks (<a href="/fetch?id={{ cachekey }}">Cache</a>)
-    </p>
+    <p>Chromebooks (<a href="/fetch?id={{ cachekey }}">Cache</a> - <a href="/delete?id={{ cachekey }}">Regenerate key</a>)</p>
     <table border="1">
       <thead>
         <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>

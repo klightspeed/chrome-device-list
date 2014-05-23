@@ -175,7 +175,7 @@ def get_devices(customerid, userid, http):
     else:
       break
 
-  devicecache = DeviceCache.query(DeviceCache.customerid == customerid).get()
+  devicecache = DeviceCache.query(ndb.AND(DeviceCache.customerid == customerid, DeviceCache.linkeduserid == userid)).get()
 
   if devicecache is None:
     devicecache = DeviceCache(customerid = customerid)
@@ -257,11 +257,21 @@ class FetchHandler(webapp2.RequestHandler):
     template = JINJA_ENVIRONMENT.get_template('fetch.html')
     self.response.write(template.render(variables))
 
+class DeleteHandler(webapp2.RequestHandler):
+  def get(self):
+    cachekey = self.request.get('id')
+    if cachekey is not None:
+      devicecache = DeviceCache.get_by_id(int(cachekey))
+      if devicecache is not None:
+        devicecache.key.delete()
+    self.redirect("/")
+
 app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
      ('/cache', FetchHandler),
      ('/fetch', FetchHandler),
+     ('/delete', DeleteHandler),
      (decorator.callback_path, decorator.callback_handler()),
     ],
     debug=True)
