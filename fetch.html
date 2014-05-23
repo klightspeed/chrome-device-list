@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Google Chrome OS Devices (Cached)</title>
+  <title>Google Chrome OS Devices {% if iscached %} (Cached) {% endif %}</title>
     <meta http-equiv="refresh" content="300" />
     <script type="text/javascript" src="/scripts/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="/scripts/util.js"></script>
@@ -12,14 +12,17 @@
   </head>
   <body>
     {% if has_devices %}
-    <p>
-      Cached Chromebooks as of {{ updated }}
-    </p>
+    {% if iscached %}
+    <p>Cached Chromebooks as of {{ updated }}</p>
+    <p>(Fetch Error: {{ fetcherror }}</p>
+    {% else %}
+    <p>Chromebooks</p>
+    {% endif %}
     <table border="1">
       <thead>
         <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
-	<th><a href="javascript:reorder('devices_tbody',1)">Mac Address</a></th>
-	<th><a href="javascript:reorder('devices_tbody',2)">Status</a></th>
+        <th><a href="javascript:reorder('devices_tbody',1)">Mac Address</a></th>
+        <th><a href="javascript:reorder('devices_tbody',2)">Status</a></th>
         <th><a href="javascript:reorder('devices_tbody',3)">OS Version</a></th>
         <th><a href="javascript:reorder('devices_tbody',4,function(v){return Date.parse(v)||0;})">Enrolled</a></th>
         <th><a href="javascript:reorder('devices_tbody',5,function(v){return Date.parse(v)||0;})">Last Sync</a></th>
@@ -37,8 +40,8 @@
           <td>{{ device.lastEnrollmentTime }}</td>
           <td>{{ device.lastSync }}</td>
           <td>{{ device.annotatedUser }}</td>
-	  <td>{{ device.annotatedLocation }}</td>
-	  <td>{{ device.notes }}</td>
+          <td>{{ device.annotatedLocation }}</td>
+          <td>{{ device.notes }}</td>
         </tr>
         {% endfor %}
       </tbody>

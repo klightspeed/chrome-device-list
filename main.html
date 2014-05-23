@@ -13,8 +13,9 @@
   <body>
 
     {% if has_credentials %}
+    <p>UserID: {{ userid }}</p>
     <p>
-      Chromebooks (<a href="/cache?id={{ cachekey }}">Cache</a>)
+      Chromebooks (<a href="/fetch?id={{ cachekey }}">Cache</a>)
     </p>
     <table border="1">
       <thead>

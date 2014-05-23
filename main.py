@@ -27,13 +27,17 @@ import httplib2
 import logging
 import os
 import json
+import sys
 
 from apiclient import discovery
 from oauth2client import appengine
 from oauth2client.appengine import OAuth2Decorator
+from oauth2client.appengine import StorageByKeyName
+from oauth2client.appengine import CredentialsModel
 from oauth2client import client
 from oauth2client import clientsecrets
 from google.appengine.api import memcache
+from google.appengine.api import users
 from datetime import datetime
 from datetime import date
 from datetime import timedelta
@@ -58,6 +62,7 @@ class OAuth2ClientSecret(db.Model):
 
 class DeviceCache(ndb.Model):
   customerid = ndb.StringProperty(required=True)
+  linkeduserid = ndb.StringProperty(required=True)
   updated = ndb.DateTimeProperty(required=True)
   devices = ndb.PickleProperty(required=True)
 
@@ -132,64 +137,67 @@ if client_secret is None:
         message=MISSING_CLIENT_SECRETS_MESSAGE
         )
 
+def get_customerid(http):
+  reportsservice = discovery.build('admin', 'reports_v1', http=http)
+  date_4daysago = (date.today() - timedelta(4)).isoformat()
+  custusage = reportsservice.customerUsageReports().get(date=date_4daysago).execute(http=http)
+  return custusage['usageReports'][0]['entity']['customerId']
+    
+def get_devices(customerid, userid, http):
+  devices = []
+  directoryservice = discovery.build('admin', 'directory_v1', http=http)
+  devicelistreq = directoryservice.chromeosdevices().list(customerId="my_customer", orderBy="lastSync", projection="FULL", sortOrder="DESCENDING")
+  
+  while True:
+    try:
+      devicelist = devicelistreq.execute(http=http)
+    except:
+      break
+
+    for device in devicelist['chromeosdevices']:
+      lastEnrollmentTime = datetime.strptime(device['lastEnrollmentTime'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastEnrollmentTime' in device else None
+      lastSync = datetime.strptime(device['lastSync'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastSync' in device else None
+      devices.append({
+        'serialNumber': device['serialNumber'],
+        'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device else '??') for i in range(0,12,2)),
+        'status': device['status'],
+        'osVersion': device.get('osVersion') or '',
+        'lastEnrollmentTime': 'Never' if lastEnrollmentTime is None else lastEnrollmentTime.strftime('%a, %d %b %Y, %H:%M UTC'),
+        'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
+        'annotatedUser': device.get('annotatedUser') or '',
+        'annotatedLocation': device.get('annotatedLocation') or '',
+        'notes': device.get('notes') or '',
+        'deviceId': device['deviceId']
+        })
+    
+    if 'nextPageToken' in devicelist:
+      devicelistreq = directoryservice.chromeosdevices().list_next(devicelistreq, devicelist)
+    else:
+      break
+
+  devicecache = DeviceCache.query(DeviceCache.customerid == customerid).get()
+
+  if devicecache is None:
+    devicecache = DeviceCache(customerid = customerid)
+
+  devicecache.linkeduserid = userid
+  devicecache.devices = devices
+  devicecache.updated = datetime.now()
+  cachekey = devicecache.put()
+  return (cachekey, devices)
 
 class MainHandler(webapp2.RequestHandler):
 
-  @decorator.oauth_aware
+  @decorator.oauth_required
   def get(self):
     devices = [ ]
     statuscount = { }
-    http = httplib2.Http()
+    user = users.get_current_user()
 
     if decorator.has_credentials():
-      credentials = decorator.get_credentials()
-      auth_http = credentials.authorize(http)
-      reportsservice = discovery.build('admin', 'reports_v1', http=auth_http)
-      directoryservice = discovery.build('admin', 'directory_v1', http=auth_http)
-      date_4daysago = (date.today() - timedelta(4)).isoformat()
-      custusage = reportsservice.customerUsageReports().get(date=date_4daysago).execute(http=auth_http)
-      customerid = custusage['usageReports'][0]['entity']['customerId']
-      devicelistreq = directoryservice.chromeosdevices().list(customerId="my_customer", orderBy="lastSync", projection="FULL", sortOrder="DESCENDING")
-      
-      while True:
-        try:
-          devicelist = devicelistreq.execute(http=auth_http)
-        except:
-          break
-
-        for device in devicelist['chromeosdevices']:
-          lastEnrollmentTime = datetime.strptime(device['lastEnrollmentTime'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastEnrollmentTime' in device else None
-          lastSync = datetime.strptime(device['lastSync'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastSync' in device else None
-          devices.append({
-            'serialNumber': device['serialNumber'],
-            'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device else '??') for i in range(0,12,2)),
-            'status': device['status'],
-            'osVersion': device.get('osVersion') or '',
-            'lastEnrollmentTime': 'Never' if lastEnrollmentTime is None else lastEnrollmentTime.strftime('%a, %d %b %Y, %H:%M UTC'),
-            'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
-            'annotatedUser': device.get('annotatedUser') or '',
-            'annotatedLocation': device.get('annotatedLocation') or '',
-            'notes': device.get('notes') or '',
-            'deviceId': device['deviceId']
-            })
-          if device['status'] in statuscount:
-            statuscount[device['status']] += 1
-          else:
-            statuscount[device['status']] = 1
-        
-        if 'nextPageToken' in devicelist:
-          devicelistreq = directoryservice.chromeosdevices().list_next(devicelistreq, devicelist)
-        else:
-          break
-
-      devicecache = DeviceCache.query(DeviceCache.customerid == customerid).get()
-
-      if devicecache is None:
-        devicecache = DeviceCache(customerid = customerid)
-
-      devicecache.devices = devices
-      devicecache.updated = datetime.now()
-      cachekey = devicecache.put()
+      http = decorator.http()
+      customerid = get_customerid(http)
+      cachekey, devices = get_devices(customerid, user.user_id(), http)
 
     variables = {
         'auth_url': decorator.authorize_url(),
@@ -197,25 +205,38 @@ class MainHandler(webapp2.RequestHandler):
         'devices': devices,
         'customerid': customerid,
         'cachekey': cachekey.integer_id(),
-        'statuscount': statuscount
+        'statuscount': statuscount,
+        'userid': user.user_id()
         }
 
     template = JINJA_ENVIRONMENT.get_template('main.html')
     self.response.write(template.render(variables))
 
-class CachedHandler(webapp2.RequestHandler):
+class FetchHandler(webapp2.RequestHandler):
   def get(self):
     devices = None
     statuscount = { }
     updated = 'Never'
     cachekey = self.request.get('id')
+    fetcherror = None
 
     if cachekey is not None:
       devicecache = DeviceCache.get_by_id(int(cachekey))
-
       if devicecache is not None:
-        devices = devicecache.devices
-        updated = devicecache.updated.strftime('%a, %d %b %Y, %H:%M UTC')
+        try:
+          authstorage = StorageByKeyName(CredentialsModel, devicecache.linkeduserid, 'credentials')
+          credentials = authstorage.get()
+          http = httplib2.Http()
+          http = credentials.authorize(http)
+          authstorage.put(credentials)
+          cachekey, devices = get_devices(devicecache.customerid, devicecache.linkeduserid, http)
+          updated = datetime.now().strftime('%a, %d %b %Y, %H:%M UTC')
+          iscached = False
+        except:
+          devices = devicecache.devices
+          updated = devicecache.updated.strftime('%a, %d %b %Y, %H:%M UTC')
+          iscached = True
+          fetcherror = sys.exc_info()
 
     if devices is not None:
       for device in devices:
@@ -224,22 +245,23 @@ class CachedHandler(webapp2.RequestHandler):
         else:
           statuscount[device['status']] = 1
 
-
-
     variables = {
         'devices': devices,
         'updated': updated,
         'has_devices': devices is not None,
-        'statuscount': statuscount
+        'statuscount': statuscount,
+        'iscached': iscached,
+        'fetcherror': fetcherror
         }
 
-    template = JINJA_ENVIRONMENT.get_template('cache.html')
+    template = JINJA_ENVIRONMENT.get_template('fetch.html')
     self.response.write(template.render(variables))
 
 app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
-     ('/cache', CachedHandler),
+     ('/cache', FetchHandler),
+     ('/fetch', FetchHandler),
      (decorator.callback_path, decorator.callback_handler()),
     ],
     debug=True)
