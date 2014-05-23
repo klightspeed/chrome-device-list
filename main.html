@@ -14,6 +14,7 @@
 
     {% if has_credentials %}
     <p>Chromebooks (<a href="/fetch?id={{ cachekey }}">Cache</a> - <a href="/delete?id={{ cachekey }}">Regenerate key</a>)</p>
+    <p><a href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">Revoke access</a></p>
     <table border="1">
       <thead>
         <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
@@ -65,8 +66,5 @@
       <a href="{{ auth_url }}">{{ auth_url }}</a>
     </blockquote>
     {% endif %}
-    <p>
-      You can always <a href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">revoke</a> permission at any time.
-    </p>
   </body>
 </html>
