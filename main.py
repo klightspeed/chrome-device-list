@@ -199,6 +199,13 @@ class MainHandler(webapp2.RequestHandler):
       customerid = get_customerid(http)
       cachekey, devices = get_devices(customerid, user.user_id(), http)
 
+    if devices is not None:
+      for device in devices:
+        if device['status'] in statuscount:
+          statuscount[device['status']] += 1
+        else:
+          statuscount[device['status']] = 1
+
     variables = {
         'auth_url': decorator.authorize_url(),
         'has_credentials': decorator.has_credentials(),
