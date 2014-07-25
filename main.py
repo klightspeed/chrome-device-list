@@ -140,7 +140,7 @@ if client_secret is None:
 def get_customerid(http):
   reportsservice = discovery.build('admin', 'reports_v1', http=http)
   date_7daysago = (date.today() - timedelta(7)).isoformat()
-  custusage = reportsservice.customerUsageReports().get(date=date_4daysago).execute(http=http)
+  custusage = reportsservice.customerUsageReports().get(date=date_7daysago).execute(http=http)
   return custusage['usageReports'][0]['entity']['customerId']
     
 def get_devices(customerid, userid, http):
