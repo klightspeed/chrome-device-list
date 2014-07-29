@@ -1,69 +1,49 @@
 <html>
   <head>
     <title>Google Chrome OS Devices</title>
-    <script type="text/javascript" src="/scripts/jquery-1.11.1.min.js"></script>
-    <script type="text/javascript" src="/scripts/util.js"></script>
+    <script type="text/javascript" src="scripts/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="scripts/util.js"></script>
+    <script type="text/javascript" src="scripts/devices.js"></script>
     <script type="text/javascript">
       sorttbodyid = "devices_tbody";
       sortorder = -1;
-      sortcolumn = 4;
+      sortcolumn = 5;
+      linkkey = "{{ linkkey }}";
+      columnfilters = [ null, null, null, null, parsedate, parsedate, null, null, null ];
+      updatefields = [ "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "annotatedLocation", "notes" ];
+      columnfields = [ "serialLink", "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "annotatedLocation", "notes" ];
+
+      $(function(){
+        updateworker();
+      });
     </script>
+    <style type="text/css">
+      table { border: 1px solid gray; border-spacing: 0; border-collapse: collapse; }
+      tr:nth-child(odd) { background: white; }
+      tr:nth-child(even) { background: lightgray; }
+      th { background: black; color: white; font-weight: bold; }
+      td, th { border: 1px solid gray; padding-left: 4px; padding-right: 4px; }
+      th a { color: white; }      
+    </style>
   </head>
   <body>
-
-    {% if has_credentials %}
-    <p>Chromebooks (<a href="/fetch?id={{ cachekey }}">Cache</a> - <a href="/delete?id={{ cachekey }}">Regenerate key</a>)</p>
+    <p>Chromebooks (<a href="/fetch?id={{ linkkey }}">Share</a> - <a href="/delete?id={{ linkkey }}">Regenerate key</a>)</p>
     <p><a href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">Revoke access</a></p>
+    <p>Last update: <span id="lastupdate">Loading</span></p>
     <table border="1">
       <thead>
         <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
         <th><a href="javascript:reorder('devices_tbody',1)">Mac Address</a></th>
         <th><a href="javascript:reorder('devices_tbody',2)">Status</a></th>
         <th><a href="javascript:reorder('devices_tbody',3)">OS Version</a></th>
-        <th><a href="javascript:reorder('devices_tbody',4,function(v){return Date.parse(v)||0;})">Enrolled</a></th>
-        <th><a href="javascript:reorder('devices_tbody',5,function(v){return Date.parse(v)||0;})">Last Sync</a></th>
+        <th><a href="javascript:reorder('devices_tbody',4,parsedate)">Enrolled</a></th>
+        <th><a href="javascript:reorder('devices_tbody',5,parsedate)">Last Sync</a></th>
         <th><a href="javascript:reorder('devices_tbody',6)">Registered User</a></th>
         <th><a href="javascript:reorder('devices_tbody',7)">Registered Location</a></th>
         <th><a href="javascript:reorder('devices_tbody',8)">Notes</a></th>
       </thead>
       <tbody id="devices_tbody">
-        {% for device in devices %}
-        <tr>
-          <td><a href="https://admin.google.com/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId={{ device.deviceId }}" target="_blank"><code>{{ device.serialNumber }}</code></a></td>
-          <td><code>{{ device.macAddress }}</code></td>
-          <td>{{ device.status }}</td>
-          <td>{{ device.osVersion }}</td>
-          <td>{{ device.lastEnrollmentTime }}</td>
-          <td>{{ device.lastSync }}</td>
-          <td>{{ device.annotatedUser }}</td>
-	  <td>{{ device.annotatedLocation }}</td>
-	  <td>{{ device.notes }}</td>
-        </tr>
-        {% endfor %}
       </tbody>
     </table>
-    <table border="1">
-      <thead>
-        <th>Status</th>
-        <th>Count</th>
-      </thead>
-      <tbody>
-        {% for status,count in statuscount.iteritems() %}
-        <tr>
-          <td>{{ status }}</td>
-          <td>{{ count }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    {% else %}
-    <p>
-      You are almost there, for the final step follow the link below and grant this application permission to access your data using the Admin Directory API.
-    </p>
-    <blockquote>
-      <a href="{{ auth_url }}">{{ auth_url }}</a>
-    </blockquote>
-    {% endif %}
   </body>
 </html>

@@ -66,6 +66,10 @@ class DeviceCache(ndb.Model):
   updated = ndb.DateTimeProperty(required=True)
   devices = ndb.PickleProperty(required=True)
 
+class CustomerLink(ndb.Model):
+  customerid = ndb.StringProperty(required=True)
+  linkeduserid = ndb.StringProperty(required=True)
+
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     autoescape=True,
@@ -143,7 +147,16 @@ def get_customerid(http):
   custusage = reportsservice.customerUsageReports().get(date=date_7daysago).execute(http=http)
   return custusage['usageReports'][0]['entity']['customerId']
     
-def get_devices(customerid, userid, http):
+def get_customerlink(customerid, userid, http):
+  customerlink = CustomerLink.query(ndb.AND(CustomerLink.customerid == customerid, CustomerLink.linkeduserid == userid)).get()
+
+  if customerlink is None:
+    customerlink = CustomerLink(customerid = customerid, linkeduserid = userid)
+
+  linkkey = customerlink.put()
+  return linkkey
+
+def get_devices(http):
   devices = []
   directoryservice = discovery.build('admin', 'directory_v1', http=http)
   devicelistreq = directoryservice.chromeosdevices().list(customerId="my_customer", orderBy="lastSync", projection="FULL", sortOrder="DESCENDING")
@@ -175,90 +188,88 @@ def get_devices(customerid, userid, http):
     else:
       break
 
+  return devices
+
+def get_devicecache(customerid, userid, devices):
   devicecache = DeviceCache.query(ndb.AND(DeviceCache.customerid == customerid, DeviceCache.linkeduserid == userid)).get()
 
   if devicecache is None:
-    devicecache = DeviceCache(customerid = customerid)
+    devicecache = DeviceCache(customerid = customerid, linkeduserid = userid)
 
-  devicecache.linkeduserid = userid
-  devicecache.devices = devices
+  if devices is not None:
+    devicecache.devices = devices
+
   devicecache.updated = datetime.now()
-  cachekey = devicecache.put()
-  return (cachekey, devices)
+  devicecache.put()
+  return devicecache
 
 class MainHandler(webapp2.RequestHandler):
-
   @decorator.oauth_required
   def get(self):
-    devices = [ ]
-    statuscount = { }
     user = users.get_current_user()
 
     if decorator.has_credentials():
       http = decorator.http()
       customerid = get_customerid(http)
-      cachekey, devices = get_devices(customerid, user.user_id(), http)
-
-    if devices is not None:
-      for device in devices:
-        if device['status'] in statuscount:
-          statuscount[device['status']] += 1
-        else:
-          statuscount[device['status']] = 1
+      linkkey = get_customerlink(customerid, user.user_id(), http)
 
     variables = {
         'auth_url': decorator.authorize_url(),
         'has_credentials': decorator.has_credentials(),
-        'devices': devices,
         'customerid': customerid,
-        'cachekey': cachekey.integer_id(),
-        'statuscount': statuscount,
-        'userid': user.user_id()
+        'userid': user.user_id(),
+        'linkkey': linkkey.integer_id()
         }
 
     template = JINJA_ENVIRONMENT.get_template('main.html')
     self.response.write(template.render(variables))
 
-class FetchHandler(webapp2.RequestHandler):
+class DeviceListHandler(webapp2.RequestHandler):
   def get(self):
     devices = None
-    statuscount = { }
     updated = 'Never'
-    cachekey = self.request.get('id')
-    fetcherror = None
+    linkkey = self.request.get('id')
+    fetcherror = 'Key not found'
 
-    if cachekey is not None:
-      devicecache = DeviceCache.get_by_id(int(cachekey))
-      if devicecache is not None:
+    if linkkey is not None:
+      customerlink = CustomerLink.get_by_id(int(linkkey))
+      if customerlink is not None:
+        devicecache = get_devicecache(customerlink.customerid, customerlink.linkeduserid, None)
         try:
-          authstorage = StorageByKeyName(CredentialsModel, devicecache.linkeduserid, 'credentials')
+          authstorage = StorageByKeyName(CredentialsModel, customerlink.linkeduserid, 'credentials')
           credentials = authstorage.get()
           http = httplib2.Http()
           http = credentials.authorize(http)
           authstorage.put(credentials)
-          cachekey, devices = get_devices(devicecache.customerid, devicecache.linkeduserid, http)
+          devices = get_devices(http)
           updated = datetime.now().strftime('%a, %d %b %Y, %H:%M UTC')
           iscached = False
+          fetcherror = None
+          devicecache.devices = devices
+          devicecache.updated = datetime.now()
+          devicecache.put()
         except:
           devices = devicecache.devices
           updated = devicecache.updated.strftime('%a, %d %b %Y, %H:%M UTC')
           iscached = True
           fetcherror = sys.exc_info()
-
-    if devices is not None:
-      for device in devices:
-        if device['status'] in statuscount:
-          statuscount[device['status']] += 1
-        else:
-          statuscount[device['status']] = 1
-
+    
     variables = {
+        'linkkey': linkkey,
         'devices': devices,
         'updated': updated,
-        'has_devices': devices is not None,
-        'statuscount': statuscount,
-        'iscached': iscached,
         'fetcherror': fetcherror
+        }
+    
+    self.response.headers['Content-Type'] = 'application/json'
+    self.response.write(json.dumps(variables))
+
+class FetchHandler(webapp2.RequestHandler):
+  def get(self):
+    linkkey = self.request.get('id')
+    
+    variables = {
+        'linkkey': linkkey
         }
 
     template = JINJA_ENVIRONMENT.get_template('fetch.html')
@@ -276,8 +287,8 @@ class DeleteHandler(webapp2.RequestHandler):
 app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
-     ('/cache', FetchHandler),
      ('/fetch', FetchHandler),
+     ('/devlist', DeviceListHandler),
      ('/delete', DeleteHandler),
      (decorator.callback_path, decorator.callback_handler()),
     ],

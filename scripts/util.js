@@ -34,21 +34,26 @@ function merge(left, right, comparison) {
     return result;
 }
 
-function reorder(tbodyid, column,filter) {
+function reorder(tbodyid, column, filter, notoggle) {
     if (filter == null) {
         filter = function(v) { return v; }
     }
 
-    var order = 1;
-    var tbody = $("#" + tbodyid);
-    var rows = $("#" + tbodyid + " tr").get();
+    var order = sortorder;
 
-    if (tbodyid == sorttbodyid && column == sortcolumn) {
-        order = -sortorder;
+    if (!notoggle) {
+        if (tbodyid == sorttbodyid && column == sortcolumn) {
+            order = -order;
+        } else {
+            order = 1;
+        }
     }
 
     sortorder = order;
     sortcolumn = column;
+
+    var tbody = $("#" + tbodyid);
+    var rows = $("#" + tbodyid + " tr").get();
 
     var rowsort = new Array();
     $.each(rows, function (i, row) {
