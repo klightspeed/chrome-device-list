@@ -60,12 +60,6 @@ class OAuth2ClientSecret(db.Model):
   javascript_origins = db.StringListProperty()
   revoke_uri = db.StringProperty()
 
-class DeviceCache(ndb.Model):
-  customerid = ndb.StringProperty(required=True)
-  linkeduserid = ndb.StringProperty(required=True)
-  updated = ndb.DateTimeProperty(required=True)
-  devices = ndb.PickleProperty(required=True)
-
 class CustomerLink(ndb.Model):
   customerid = ndb.StringProperty(required=True)
   linkeduserid = ndb.StringProperty(required=True)
@@ -74,8 +68,6 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     autoescape=True,
     extensions=['jinja2.ext.autoescape'])
-
-DEVICE_CACHE_NAMESPACE = "tsvceo-chrome-device-mgmt:devicecache#ns"
 
 # CLIENT_SECRETS, name of a file containing the OAuth 2.0 information for this
 # application, including client_id and client_secret, which are found
@@ -149,11 +141,12 @@ def get_customerid(http):
     
 def get_customerlink(customerid, userid, http):
   customerlink = CustomerLink.query(ndb.AND(CustomerLink.customerid == customerid, CustomerLink.linkeduserid == userid)).get()
+  linkkey = customerlink.key
 
   if customerlink is None:
     customerlink = CustomerLink(customerid = customerid, linkeduserid = userid)
+    linkkey = customerlink.put()
 
-  linkkey = customerlink.put()
   return linkkey
 
 def get_devices(http):
@@ -172,7 +165,7 @@ def get_devices(http):
       lastSync = datetime.strptime(device['lastSync'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastSync' in device else None
       devices.append({
         'serialNumber': device['serialNumber'],
-        'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device else '??') for i in range(0,12,2)),
+        'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device and device['macAddress'] != '' else '??') for i in range(0,12,2)),
         'status': device['status'],
         'osVersion': device.get('osVersion') or '',
         'lastEnrollmentTime': 'Never' if lastEnrollmentTime is None else lastEnrollmentTime.strftime('%a, %d %b %Y, %H:%M UTC'),
@@ -189,19 +182,6 @@ def get_devices(http):
       break
 
   return devices
-
-def get_devicecache(customerid, userid, devices):
-  devicecache = DeviceCache.query(ndb.AND(DeviceCache.customerid == customerid, DeviceCache.linkeduserid == userid)).get()
-
-  if devicecache is None:
-    devicecache = DeviceCache(customerid = customerid, linkeduserid = userid)
-
-  if devices is not None:
-    devicecache.devices = devices
-
-  devicecache.updated = datetime.now()
-  devicecache.put()
-  return devicecache
 
 class MainHandler(webapp2.RequestHandler):
   @decorator.oauth_required
@@ -234,7 +214,6 @@ class DeviceListHandler(webapp2.RequestHandler):
     if linkkey is not None:
       customerlink = CustomerLink.get_by_id(int(linkkey))
       if customerlink is not None:
-        devicecache = get_devicecache(customerlink.customerid, customerlink.linkeduserid, None)
         try:
           authstorage = StorageByKeyName(CredentialsModel, customerlink.linkeduserid, 'credentials')
           credentials = authstorage.get()
@@ -243,15 +222,8 @@ class DeviceListHandler(webapp2.RequestHandler):
           authstorage.put(credentials)
           devices = get_devices(http)
           updated = datetime.now().strftime('%a, %d %b %Y, %H:%M UTC')
-          iscached = False
           fetcherror = None
-          devicecache.devices = devices
-          devicecache.updated = datetime.now()
-          devicecache.put()
         except:
-          devices = devicecache.devices
-          updated = devicecache.updated.strftime('%a, %d %b %Y, %H:%M UTC')
-          iscached = True
           fetcherror = sys.exc_info()
     
     variables = {
@@ -277,11 +249,11 @@ class FetchHandler(webapp2.RequestHandler):
 
 class DeleteHandler(webapp2.RequestHandler):
   def get(self):
-    cachekey = self.request.get('id')
-    if cachekey is not None:
-      devicecache = DeviceCache.get_by_id(int(cachekey))
-      if devicecache is not None:
-        devicecache.key.delete()
+    linkkey = self.request.get('id')
+    if linkkey is not None:
+      customerlink = CustomerLink.get_by_id(int(linkkey))
+      if customerlink is not None:
+        customerlink.key.delete()
     self.redirect("/")
 
 app = webapp2.WSGIApplication(

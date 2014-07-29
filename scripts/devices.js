@@ -32,10 +32,17 @@ function update_device(i, device) {
     });
   } else {
     var dev = [];
-    dev['serialLink'] = $("<td></td>").append($("<a></a>").attr("href", "https://admin.google.com/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId=" + device['deviceId']).text(device['serialNumber']));
+    dev['serialLink'] = $("<td></td>").addClass("ident")
+                                      .append($("<a></a>")
+                                        .attr("href", "https://admin.google.com/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId=" + device['deviceId'])
+                                        .text(device['serialNumber']));
 
     $.each(device, function(key, value) {
-      dev[key] = $("<td></td>").text(value);
+      var cell = $("<td></td>").text(value);
+      if (key == "serialNumber" || key == "macAddress") {
+        cell.addClass("ident");
+      }
+      dev[key] = cell;
     });
 
     devices[device['deviceId']] = dev;
