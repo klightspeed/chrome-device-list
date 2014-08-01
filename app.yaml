@@ -13,6 +13,7 @@ handlers:
   static_dir: images
 - url: .*
   script: main.app
+  secure: always
 
 libraries:
 - name: jinja2
