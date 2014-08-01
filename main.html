@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
   <head>
     <title>Google Chrome OS Devices</title>
@@ -27,29 +28,41 @@
       td.ident { font-family: monospace; }
       td.status_active { background: lightgreen; }
       td.status_inactive { background: pink; }
+      body { overflow: hidden; }
+      div { margin: 0; padding-top: 0.25em; padding-bottom: 0.25em; padding-left: 0.5em; padding-right: 0.5em; }
+      #header { position: absolute; top: 0; right: 0; left: 0; height: 8em; overflow: auto; border-top: 2px solid gray; border-bottom: 2px solid gray; text-align: center; }
+      #content { position: absolute; top: 9em; right: 0; bottom: 4em; left: 0; overflow: auto; }
+      #footer { position: absolute; right: 0; left: 0; bottom: 0; height: 3em; overflow: hidden; text-align: center; }
     </style>
   </head>
   <body>
-    <p>Chromebooks</p>
-    <p><a href="fetch?id={{ linkkey }}">Share</a> 
-     | <a href="delete?id={{ linkkey }}">Regenerate key</a> 
-     | <a href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">Revoke access</a></p>
-    <p>Last update: <span id="lastupdate">&nbsp;</span><img id="loading" src="images/loading.gif" alt="Loading" /></p>
-    <table border="1">
-      <thead>
-        <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
-        <th><a href="javascript:reorder('devices_tbody',1)">Mac Address</a></th>
-        <th><a href="javascript:reorder('devices_tbody',2)">Status</a></th>
-        <th><a href="javascript:reorder('devices_tbody',3)">OS Version</a></th>
-        <th><a href="javascript:reorder('devices_tbody',4,parsedate)">Enrolled</a></th>
-        <th><a href="javascript:reorder('devices_tbody',5,parsedate)">Last Sync</a></th>
-        <th><a href="javascript:reorder('devices_tbody',6)">Registered User</a></th>
-	<th><a href="javascript:reorder('devices_tbody',7)">User Active</a></th>
-        <th><a href="javascript:reorder('devices_tbody',8)">Registered Location</a></th>
-        <th><a href="javascript:reorder('devices_tbody',9)">Notes</a></th>
-      </thead>
-      <tbody id="devices_tbody">
-      </tbody>
-    </table>
+    <div id="header">
+      <h1>Google Chrome OS Devices</h1>
+      <p><a href="fetch?id={{ linkkey }}">Share</a> 
+       | <a href="delete?id={{ linkkey }}">Regenerate key</a> 
+       | <a href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">Revoke access</a></p>
+    </div>
+    <div id="content">
+      <table>
+        <thead>
+          <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
+          <th><a href="javascript:reorder('devices_tbody',1)">Mac Address</a></th>
+          <th><a href="javascript:reorder('devices_tbody',2)">Status</a></th>
+          <th><a href="javascript:reorder('devices_tbody',3)">OS Version</a></th>
+          <th><a href="javascript:reorder('devices_tbody',4,parsedate)">Enrolled</a></th>
+          <th><a href="javascript:reorder('devices_tbody',5,parsedate)">Last Sync</a></th>
+          <th><a href="javascript:reorder('devices_tbody',6)">Registered User</a></th>
+          <th><a href="javascript:reorder('devices_tbody',7)">User Active</a></th>
+          <th><a href="javascript:reorder('devices_tbody',8)">Registered Location</a></th>
+          <th><a href="javascript:reorder('devices_tbody',9)">Notes</a></th>
+        </thead>
+        <tbody id="devices_tbody">
+        </tbody>
+      </table>
+    </div>
+    <div id="footer">
+      <p>Last update: <span id="lastupdate">&nbsp;</span>
+         <img id="loading" src="images/loading.gif" alt="Loading" /></p>
+    </div>
   </body>
 </html>
