@@ -28,6 +28,7 @@ import logging
 import os
 import json
 import sys
+import traceback
 
 from apiclient import discovery
 from oauth2client import appengine
@@ -63,6 +64,11 @@ class OAuth2ClientSecret(db.Model):
 class CustomerLink(ndb.Model):
   customerid = ndb.StringProperty(required=True)
   linkeduserid = ndb.StringProperty(required=True)
+
+class ActiveUsersCache(ndb.Model):
+  customerid = ndb.StringProperty(required=True)
+  lastupdate = ndb.DateTimeProperty(required=True)
+  activeusers = ndb.PickleProperty(required=True)
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -127,6 +133,7 @@ if client_secret is None:
           'https://www.googleapis.com/auth/admin.directory.device.chromeos',
           'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
           'https://www.googleapis.com/auth/admin.reports.usage.readonly',
+	  'https://www.googleapis.com/auth/admin.directory.user.readonly',
         ],
         auth_uri = client_secret.auth_uri,
         token_uri = client_secret.token_uri,
@@ -149,7 +156,40 @@ def get_customerlink(customerid, userid, http):
 
   return linkkey
 
-def get_devices(http):
+def get_active_users(customerid, http):
+  cachedusers = ActiveUsersCache.query(ActiveUsersCache.customerid == customerid).get()
+  if cachedusers is None or datetime.now() - cachedusers.lastupdate > timedelta(hours = 12):
+    users = {}
+    directoryservice = discovery.build('admin', 'directory_v1', http=http)
+    userlistreq = directoryservice.users().list(customer="my_customer", orderBy="email", sortOrder="ASCENDING")
+
+    while True:
+      try:
+        userlist = userlistreq.execute(http=http)
+      except:
+        break
+
+      for user in userlist['users']:
+        if not user['suspended']:
+          users[user['primaryEmail']] = True
+
+      if 'nextPageToken' in userlist:
+        userlistreq = directoryservice.users().list_next(userlistreq, userlist)
+      else:
+        break
+
+    if cachedusers is None:
+      cachedusers = ActiveUsersCache(customerid = customerid)
+
+    cachedusers.lastupdate = datetime.now()
+    cachedusers.activeusers = users
+    cachedusers.put()
+  else:
+    users = cachedusers.activeusers
+
+  return users
+
+def get_devices(active_users, http):
   devices = []
   directoryservice = discovery.build('admin', 'directory_v1', http=http)
   devicelistreq = directoryservice.chromeosdevices().list(customerId="my_customer", orderBy="lastSync", projection="FULL", sortOrder="DESCENDING")
@@ -163,6 +203,8 @@ def get_devices(http):
     for device in devicelist['chromeosdevices']:
       lastEnrollmentTime = datetime.strptime(device['lastEnrollmentTime'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastEnrollmentTime' in device else None
       lastSync = datetime.strptime(device['lastSync'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastSync' in device else None
+      annotatedUser = device.get('annotatedUser') or ''
+      userActive = users is not None and annotatedUser in active_users
       devices.append({
         'serialNumber': device['serialNumber'],
         'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device and device['macAddress'] != '' else '??') for i in range(0,12,2)),
@@ -170,10 +212,11 @@ def get_devices(http):
         'osVersion': device.get('osVersion') or '',
         'lastEnrollmentTime': 'Never' if lastEnrollmentTime is None else lastEnrollmentTime.strftime('%a, %d %b %Y, %H:%M UTC'),
         'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
-        'annotatedUser': device.get('annotatedUser') or '',
+        'annotatedUser': annotatedUser,
         'annotatedLocation': device.get('annotatedLocation') or '',
         'notes': device.get('notes') or '',
-        'deviceId': device['deviceId']
+        'deviceId': device['deviceId'],
+        'userActive': "Yes" if userActive else "No"
         })
     
     if 'nextPageToken' in devicelist:
@@ -220,11 +263,12 @@ class DeviceListHandler(webapp2.RequestHandler):
           http = httplib2.Http()
           http = credentials.authorize(http)
           authstorage.put(credentials)
-          devices = get_devices(http)
+          active_users = get_active_users(customerlink.customerid, http)
+          devices = get_devices(active_users, http)
           updated = datetime.now().strftime('%a, %d %b %Y, %H:%M UTC')
           fetcherror = None
         except:
-          fetcherror = sys.exc_info()
+          fetcherror = traceback.format_exc()
     
     variables = {
         'linkkey': linkkey,

@@ -9,9 +9,9 @@
       sortorder = -1;
       sortcolumn = 5;
       linkkey = "{{ linkkey }}";
-      columnfilters = [ null, null, null, null, parsedate, parsedate, null, null, null ];
-      updatefields = [ "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "annotatedLocation", "notes" ];
-      columnfields = [ "serialNumber", "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "annotatedLocation", "notes" ];
+      columnfilters = [ null, null, null, null, parsedate, parsedate, null, null, null, null ];
+      updatefields = [ "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "userActive", "annotatedLocation", "notes" ];
+      columnfields = [ "serialNumber", "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "userActive", "annotatedLocation", "notes" ];
 
       $(function(){
         updateworker();
@@ -25,11 +25,13 @@
       td, th { border: 1px solid gray; padding-left: 4px; padding-right: 4px; }
       th a { color: white; }
       td.ident { font-family: monospace; }
+      td.status_active { background: lightgreen; }
+      td.status_inactive { background: pink; }
     </style>
   </head>
   <body>
     <p>Chromebooks</p>
-    <p>Last update: <span id="lastupdate">Loading</span></p>
+    <p>Last update: <span id="lastupdate">&nbsp;</span><img id="loading" src="images/loading.gif" alt="Loading" /></p>
     <table border="1">
       <thead>
         <th><a href="javascript:reorder('devices_tbody',0)">Serial Number</a></th>
@@ -39,8 +41,9 @@
         <th><a href="javascript:reorder('devices_tbody',4,parsedate)">Enrolled</a></th>
         <th><a href="javascript:reorder('devices_tbody',5,parsedate)">Last Sync</a></th>
         <th><a href="javascript:reorder('devices_tbody',6)">Registered User</a></th>
-        <th><a href="javascript:reorder('devices_tbody',7)">Registered Location</a></th>
-        <th><a href="javascript:reorder('devices_tbody',8)">Notes</a></th>
+	<th><a href="javascript:reorder('devices_tbody',7)">User Active</a></th>
+        <th><a href="javascript:reorder('devices_tbody',8)">Registered Location</a></th>
+        <th><a href="javascript:reorder('devices_tbody',9)">Notes</a></th>
       </thead>
       <tbody id="devices_tbody">
       </tbody>

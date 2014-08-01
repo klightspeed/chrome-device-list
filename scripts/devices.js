@@ -10,12 +10,12 @@ function parsedate(v) {
 }
 
 function updateworker() {
-  $("#lastupdate").text("Loading");
+  $("#loading").show();
   $.ajax({
     url: "devlist?id=" + linkkey,
     success: update_devices,
     complete: function () {
-      setTimeout("updateworker()", 60000);
+      setTimeout("updateworker()", 300000);
     }
   });
 }
@@ -26,8 +26,24 @@ function update_device(i, device) {
 
     $.each(updatefields, function (i, field) {
       var cell = dev[field];
-      if (cell.text() != device[field]) {
-        cell.text(device[field]);
+      var value = device[field];
+      if (cell.text() != value) {
+        cell.text(value);
+        if (field == "status") {
+          cell.removeClass();
+          if (value == "ACTIVE") {
+            cell.addClass("status_active");
+          } else {
+            cell.addClass("status_inactive");
+          }
+        } else if (field == "annotatedUser" || key == "userActive") {
+          cell.removeClass();
+          if (device['userActive'] == "Yes") {
+            cell.addClass("status_active");
+          } else {
+            cell.addClass("status_inactive");
+          }
+        }
       }
     });
   } else {
@@ -41,6 +57,20 @@ function update_device(i, device) {
       var cell = $("<td></td>").text(value);
       if (key == "serialNumber" || key == "macAddress") {
         cell.addClass("ident");
+      } else if (key == "status") {
+        cell.removeClass();
+        if (value == "ACTIVE") {
+          cell.addClass("status_active");
+        } else {
+          cell.addClass("status_inactive");
+        }
+      } else if (key == "annotatedUser" || key == "userActive") {
+        cell.removeClass();
+        if (device['userActive'] == "Yes") {
+          cell.addClass("status_active");
+        } else {
+          cell.addClass("status_inactive");
+        }
       }
       dev[key] = cell;
     });
@@ -63,6 +93,7 @@ function update_devices(data) {
     $.each(devlist, update_device);
     reorder("devices_tbody", sortcolumn, columnfilters[sortcolumn], true);
     $("#lastupdate").text(data['updated']);
+    $("#loading").hide();
   }
 }
 
