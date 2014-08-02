@@ -36,7 +36,7 @@ function update_device(i, device) {
           } else {
             cell.addClass("status_inactive");
           }
-        } else if (field == "annotatedUser" || key == "userActive") {
+        } else if (field == "annotatedUser" || field == "userActive") {
           cell.removeClass();
           if (device['userActive'] == "Yes") {
             cell.addClass("status_active");
