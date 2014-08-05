@@ -123,22 +123,22 @@ if client_secret is None:
     client_secret = db.GqlQuery("SELECT * FROM OAuth2ClientSecret").get()
     memcache.set(CLIENT_SECRETS, client_secret, namespace=CLIENT_SECRETS_NAMESPACE)
 
-  if client_secret is None:
-    decorator = appengine.oauth2decorator(message = MISSING_CLIENT_SECRETS_MESSAGE)
-  else:
-    decorator = OAuth2Decorator(
-        client_id = client_secret.client_id,
-        client_secret = client_secret.client_secret,
-        scope=[
-          'https://www.googleapis.com/auth/admin.directory.device.chromeos',
-          'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
-          'https://www.googleapis.com/auth/admin.reports.usage.readonly',
-	  'https://www.googleapis.com/auth/admin.directory.user.readonly',
-        ],
-        auth_uri = client_secret.auth_uri,
-        token_uri = client_secret.token_uri,
-        message=MISSING_CLIENT_SECRETS_MESSAGE
-        )
+if client_secret is None:
+  decorator = appengine.oauth2decorator(message = MISSING_CLIENT_SECRETS_MESSAGE)
+else:
+  decorator = OAuth2Decorator(
+      client_id = client_secret.client_id,
+      client_secret = client_secret.client_secret,
+      scope=[
+        'https://www.googleapis.com/auth/admin.directory.device.chromeos',
+        'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
+        'https://www.googleapis.com/auth/admin.reports.usage.readonly',
+        'https://www.googleapis.com/auth/admin.directory.user.readonly',
+      ],
+      auth_uri = client_secret.auth_uri,
+      token_uri = client_secret.token_uri,
+      message=MISSING_CLIENT_SECRETS_MESSAGE
+      )
 
 def get_customerid(http):
   reportsservice = discovery.build('admin', 'reports_v1', http=http)
@@ -216,7 +216,7 @@ def get_devices(active_users, http):
         'annotatedLocation': device.get('annotatedLocation') or '',
         'notes': device.get('notes') or '',
         'deviceId': device['deviceId'],
-        'userActive': "Yes" if userActive else "No"
+        'userActive': "" if annotatedUser == "" else ("Yes" if userActive else "No")
         })
     
     if 'nextPageToken' in devicelist:
