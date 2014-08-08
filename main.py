@@ -148,11 +148,12 @@ def get_customerid(http):
     
 def get_customerlink(customerid, userid, http):
   customerlink = CustomerLink.query(ndb.AND(CustomerLink.customerid == customerid, CustomerLink.linkeduserid == userid)).get()
-  linkkey = customerlink.key
 
   if customerlink is None:
     customerlink = CustomerLink(customerid = customerid, linkeduserid = userid)
     linkkey = customerlink.put()
+  else:
+    linkkey = customerlink.key
 
   return linkkey
 
