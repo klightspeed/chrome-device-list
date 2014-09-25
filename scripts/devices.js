@@ -52,6 +52,7 @@ function update_device(i, device) {
     var dev = [];
     dev['serialLink'] = $("<td></td>").addClass("ident")
                                       .append($("<a></a>")
+                                        .attr("target", "_blank")
                                         .attr("href", "https://admin.google.com/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId=" + device['deviceId'])
                                         .text(device['serialNumber']));
 
