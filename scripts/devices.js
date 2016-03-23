@@ -20,7 +20,7 @@ function updateworker() {
   });
 }
 
-function update_device(i, device) {
+function update_device(i, device, domainname) {
   if (device['deviceId'] in devices) {
     var dev = devices[device['deviceId']];
 
@@ -62,7 +62,7 @@ function update_device(i, device) {
     dev['serialLink'] = $("<td></td>").addClass("ident")
                                       .append($("<a></a>")
                                         .attr("target", "_blank")
-                                        .attr("href", "https://admin.google.com/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId=" + device['deviceId'])
+                                        .attr("href", "https://admin.google.com/" + domainname + "/AdminHome?fral=1#DeviceDetails:deviceType=CHROME&deviceId=" + device['deviceId'])
                                         .text(device['serialNumber']));
 
     $.each(device, function(key, value) {
@@ -112,8 +112,9 @@ function update_device(i, device) {
 
 function update_devices(data) {
   var devlist = data['devices'];
+  var domainname = data['domainname'];
   if (devlist != null) {
-    $.each(devlist, update_device);
+    $.each(devlist, function(i, dev){ update_device(i, dev, domainname); });
     reorder("devices_tbody", sortcolumn, columnfilters[sortcolumn], true);
     $("#lastupdate").text(data['updated']);
     $("#loading").hide();

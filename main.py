@@ -63,6 +63,7 @@ class OAuth2ClientSecret(db.Model):
 
 class CustomerLink(ndb.Model):
   customerid = ndb.StringProperty(required=True)
+  domainname = ndb.StringProperty()
   linkeduserid = ndb.StringProperty(required=True)
 
 class ActiveUsersCache(ndb.Model):
@@ -132,27 +133,30 @@ else:
       scope=[
         'https://www.googleapis.com/auth/admin.directory.device.chromeos',
         'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
-        'https://www.googleapis.com/auth/admin.reports.usage.readonly',
         'https://www.googleapis.com/auth/admin.directory.user.readonly',
+        'https://www.googleapis.com/auth/admin.directory.customer.readonly'
       ],
       auth_uri = client_secret.auth_uri,
       token_uri = client_secret.token_uri,
       message=MISSING_CLIENT_SECRETS_MESSAGE
       )
 
-def get_customerid(http):
-  reportsservice = discovery.build('admin', 'reports_v1', http=http)
-  date_7daysago = (date.today() - timedelta(7)).isoformat()
-  custusage = reportsservice.customerUsageReports().get(date=date_7daysago).execute(http=http)
-  return custusage['usageReports'][0]['entity']['customerId']
-    
-def get_customerlink(customerid, userid, http):
+def get_customer(http):
+  directoryservice = discovery.build('admin', 'directory_v1', http=http)
+  customerreq = directoryservice.customers().get(customerKey="my_customer", fields="id,customerDomain")
+  customer = customerreq.execute(http=http)
+  return customer
+
+def get_customerlink(customerid, domainname, userid, http):
   customerlink = CustomerLink.query(ndb.AND(CustomerLink.customerid == customerid, CustomerLink.linkeduserid == userid)).get()
 
   if customerlink is None:
-    customerlink = CustomerLink(customerid = customerid, linkeduserid = userid)
+    customerlink = CustomerLink(customerid = customerid, domainname = domainname, linkeduserid = userid)
     linkkey = customerlink.put()
   else:
+    if customerlink.domainname is None:
+      customerlink.domainname = domainname
+      customerlink.put()
     linkkey = customerlink.key
 
   return linkkey
@@ -239,13 +243,14 @@ class MainHandler(webapp2.RequestHandler):
 
     if decorator.has_credentials():
       http = decorator.http()
-      customerid = get_customerid(http)
-      linkkey = get_customerlink(customerid, user.user_id(), http)
+      customer = get_customer(http)
+      linkkey = get_customerlink(customer['id'], customer['customerDomain'], user.user_id(), http)
 
     variables = {
         'auth_url': decorator.authorize_url(),
         'has_credentials': decorator.has_credentials(),
-        'customerid': customerid,
+        'customerid': customer['id'],
+        'domainname': customer['customerDomain'],
         'userid': user.user_id(),
         'linkkey': linkkey.integer_id()
         }
@@ -259,10 +264,12 @@ class DeviceListHandler(webapp2.RequestHandler):
     updated = 'Never'
     linkkey = self.request.get('id')
     fetcherror = 'Key not found'
+    domainname = None
 
     if linkkey is not None:
       customerlink = CustomerLink.get_by_id(int(linkkey))
       if customerlink is not None:
+        domainname = customerlink.domainname
         try:
           authstorage = StorageByKeyName(CredentialsModel, customerlink.linkeduserid, 'credentials')
           credentials = authstorage.get()
@@ -278,6 +285,7 @@ class DeviceListHandler(webapp2.RequestHandler):
     
     variables = {
         'linkkey': linkkey,
+        'domainname': domainname,
         'devices': devices,
         'updated': updated,
         'fetcherror': fetcherror
