@@ -8,7 +8,7 @@
     <script type="text/javascript">
       sorttbodyid = "devices_tbody";
       sortorder = -1;
-      sortcolumn = 5;
+      sortcolumn = 6;
       linkkey = "{{ linkkey }}";
       columnfilters = [ null, null, null, null, null, parsedate, parsedate, null, null, null, null, null ];
       updatefields = [ "model", "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "userActive", "recentUsers", "annotatedLocation", "notes" ];
@@ -23,7 +23,7 @@
       tr:nth-child(odd) { background: white; }
       tr:nth-child(even) { background: lightgray; }
       th { background: black; color: white; font-weight: bold; }
-      td, th { border: 1px solid gray; padding-left: 4px; padding-right: 4px; white-space: pre-line; }
+      td, th { border: 1px solid gray; padding-left: 4px; padding-right: 4px; white-space: pre-line; font-size: 0.8em; }
       th a { color: white; }      
       td.ident { font-family: monospace; }
       td.status_active { background: lightgreen; }
