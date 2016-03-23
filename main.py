@@ -215,6 +215,7 @@ def get_devices(active_users, http):
       recentUserActive = users is not None and recentUser in active_users
       devices.append({
         'serialNumber': device['serialNumber'],
+        'model': device['model'],
         'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device and device['macAddress'] != '' else '??') for i in range(0,12,2)),
         'status': device['status'],
         'osVersion': device.get('osVersion') or '',
