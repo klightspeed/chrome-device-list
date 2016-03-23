@@ -10,9 +10,9 @@
       sortorder = -1;
       sortcolumn = 5;
       linkkey = "{{ linkkey }}";
-      columnfilters = [ null, null, null, null, parsedate, parsedate, null, null, null, null ];
-      updatefields = [ "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "userActive", "annotatedLocation", "notes" ];
-      columnfields = [ "serialLink", "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "userActive", "annotatedLocation", "notes" ];
+      columnfilters = [ null, null, null, null, parsedate, parsedate, null, null, null, null, null ];
+      updatefields = [ "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "userActive", "recentUsers", "annotatedLocation", "notes" ];
+      columnfields = [ "serialLink", "macAddress", "status", "osVersion", "lastEnrollmentTime", "lastSync", "annotatedUser", "userActive", "recentUsers", "annotatedLocation", "notes" ];
 
       $(function(){
         updateworker();
@@ -53,8 +53,9 @@
           <th><a href="javascript:reorder('devices_tbody',5,parsedate)">Last Sync</a></th>
           <th><a href="javascript:reorder('devices_tbody',6)">Registered User</a></th>
           <th><a href="javascript:reorder('devices_tbody',7)">User Active</a></th>
-          <th><a href="javascript:reorder('devices_tbody',8)">Registered Location</a></th>
-          <th><a href="javascript:reorder('devices_tbody',9)">Notes</a></th>
+          <th><a href="javascript:reorder('devices_tbody',8)">Recent Users</a></th>
+          <th><a href="javascript:reorder('devices_tbody',9)">Registered Location</a></th>
+          <th><a href="javascript:reorder('devices_tbody',10)">Notes</a></th>
         </thead>
         <tbody id="devices_tbody">
         </tbody>

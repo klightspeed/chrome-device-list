@@ -215,6 +215,7 @@ def get_devices(active_users, http):
         'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
         'annotatedUser': annotatedUser,
         'annotatedLocation': device.get('annotatedLocation') or '',
+        'recentUsers': '\n'.join(u['email'] for u in device['recentUsers'] if 'email' in u) if 'recentUsers' in device else '',
         'notes': device.get('notes') or '',
         'deviceId': device['deviceId'],
         'userActive': "" if annotatedUser == "" else ("Yes" if userActive else "No")
