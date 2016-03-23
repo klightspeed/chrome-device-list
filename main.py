@@ -205,7 +205,10 @@ def get_devices(active_users, http):
       lastEnrollmentTime = datetime.strptime(device['lastEnrollmentTime'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastEnrollmentTime' in device else None
       lastSync = datetime.strptime(device['lastSync'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastSync' in device else None
       annotatedUser = device.get('annotatedUser') or ''
+      recentUsers = [ u['email'] for u in device['recentUsers'] if 'email' in u] if 'recentUsers' in device else []
+      recentUser = recentUsers[0] if recentUsers != [] else ''
       userActive = users is not None and annotatedUser in active_users
+      recentUserActive = users is not None and recentUser in active_users
       devices.append({
         'serialNumber': device['serialNumber'],
         'macAddress': ':'.join((device['macAddress'][i:i+2] if 'macAddress' in device and device['macAddress'] != '' else '??') for i in range(0,12,2)),
@@ -215,10 +218,11 @@ def get_devices(active_users, http):
         'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
         'annotatedUser': annotatedUser,
         'annotatedLocation': device.get('annotatedLocation') or '',
-        'recentUsers': '\n'.join(u['email'] for u in device['recentUsers'] if 'email' in u) if 'recentUsers' in device else '',
+        'recentUsers': '\n'.join(recentUsers),
         'notes': device.get('notes') or '',
         'deviceId': device['deviceId'],
-        'userActive': "" if annotatedUser == "" else ("Yes" if userActive else "No")
+        'userActive': "" if annotatedUser == "" else ("Yes" if userActive else "No"),
+        'recentUserActive': '' if recentUser == '' else ('Yes' if recentUserActive else 'No')
         })
     
     if 'nextPageToken' in devicelist:

@@ -38,13 +38,22 @@ function update_device(i, device) {
           }
         } else if (field == "annotatedUser" || field == "userActive") {
           cell.removeClass();
-	  if (device['annotatedUser'] != "") {
+          if (device['annotatedUser'] != "") {
             if (device['userActive'] == "Yes") {
               cell.addClass("status_active");
             } else {
               cell.addClass("status_inactive");
             }
-	  }
+          }
+        } else if (field == "recentUsers") {
+          cell.removeClass();
+          if (device['recentUsers'] != "") {
+            if (device['recentUserActive'] == "Yes") {
+              cell.addClass("status_active");
+            } else {
+              cell.addClass("status_inactive");
+            }
+          }
         }
       }
     });
@@ -71,6 +80,15 @@ function update_device(i, device) {
         cell.removeClass();
         if (device['annotatedUser'] != "") {
           if (device['userActive'] == "Yes") {
+            cell.addClass("status_active");
+          } else {
+            cell.addClass("status_inactive");
+          }
+        }
+      } else if (key == "recentUsers") {
+        cell.removeClass();
+        if (device['recentUsers'] != "") {
+          if (device['recentUserActive'] == "Yes") {
             cell.addClass("status_active");
           } else {
             cell.addClass("status_inactive");
