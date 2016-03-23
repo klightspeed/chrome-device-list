@@ -208,6 +208,8 @@ def get_devices(active_users, http):
     for device in devicelist['chromeosdevices']:
       lastEnrollmentTime = datetime.strptime(device['lastEnrollmentTime'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastEnrollmentTime' in device else None
       lastSync = datetime.strptime(device['lastSync'],'%Y-%m-%dT%H:%M:%S.%fZ') if 'lastSync' in device else None
+      lastActiveDate = device['activeTimeRanges'][len(device['activeTimeRanges'])-1]['date'] if 'activeTimeRanges' in device and len(device['activeTimeRanges']) >= 1 else None
+      lastActive = datetime.strptime(lastActiveDate,'%Y-%m-%d') if lastActiveDate is not None else None
       annotatedUser = device.get('annotatedUser') or ''
       recentUsers = [ u['email'] for u in device['recentUsers'] if 'email' in u] if 'recentUsers' in device else []
       recentUser = recentUsers[0] if recentUsers != [] else ''
@@ -220,7 +222,8 @@ def get_devices(active_users, http):
         'status': device['status'],
         'osVersion': device.get('osVersion') or '',
         'lastEnrollmentTime': 'Never' if lastEnrollmentTime is None else lastEnrollmentTime.strftime('%a, %d %b %Y, %H:%M UTC'),
-        'lastSync': 'Never' if lastEnrollmentTime is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
+        'lastSync': 'Never' if lastSync is None else lastSync.strftime('%a, %d %b %Y, %H:%M UTC'),
+        'lastActive': 'Never' if recentUsers == '' else ('Unknown' if lastActive is None else lastActive.strftime('%a, %d %b %Y')),
         'annotatedUser': annotatedUser,
         'annotatedLocation': device.get('annotatedLocation') or '',
         'recentUsers': '\n'.join(recentUsers),
