@@ -175,12 +175,13 @@ def get_active_users(customerid, http):
         break
 
       for user in userlist['users']:
-        if not user['suspended'] and 'emails' in user:
+        if 'emails' in user:
           for email in user['emails']:
             users[email['address']] = {
                 'username': user['primaryEmail'].split('@', 1)[0],
                 'primaryEmail': user['primaryEmail'],
-                'orgUnitPath': user['orgUnitPath']
+                'orgUnitPath': user['orgUnitPath'],
+                'active': not user['suspended']
             }
 
       if 'nextPageToken' in userlist:
@@ -216,10 +217,10 @@ def get_devices(active_users, http):
       lastActiveDate = device['activeTimeRanges'][len(device['activeTimeRanges'])-1]['date'] if 'activeTimeRanges' in device and len(device['activeTimeRanges']) >= 1 else None
       lastActive = datetime.strptime(lastActiveDate,'%Y-%m-%d') if lastActiveDate is not None else None
       annotatedUser = device.get('annotatedUser') or ''
-      recentUsers = [ ((au['orgUnitPath'] + '/' + au['username']) if au else ue) for u in device['recentUsers'] if 'email' in u for ue in [u['email']] for au in [active_users[ue] if ue in active_users else None]] if 'recentUsers' in device else []
-      recentUser = recentUsers[0] if recentUsers != [] else ''
+      recentUserDetails = [ (au if au else { 'primaryEmail': ue, 'active': False }) for u in device['recentUsers'] if 'email' in u for ue in [u['email']] for au in [active_users[ue] if ue in active_users else None]] if 'recentUsers' in device else []
+      recentUsers = [ ((u['orgUnitPath'] + '/' + u['username']) if 'orgUnitPath' in u else u['primaryEmail']) for u in recentUserDetails ]
       userActive = users is not None and annotatedUser in active_users
-      recentUserActive = users is not None and recentUser in active_users
+      recentUserActive = any([ u['active'] for u in recentUserDetails ])
       devices.append({
         'serialNumber': device['serialNumber'],
         'model': device['model'],
@@ -235,7 +236,7 @@ def get_devices(active_users, http):
         'notes': device.get('notes') or '',
         'deviceId': device['deviceId'],
         'userActive': "" if annotatedUser == "" else ("Yes" if userActive else "No"),
-        'recentUserActive': '' if recentUser == '' else ('Yes' if recentUserActive else 'No')
+        'recentUserActive': '' if recentUsers == [] else ('Yes' if recentUserActive else 'No')
         })
     
     if 'nextPageToken' in devicelist:
