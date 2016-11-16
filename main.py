@@ -175,8 +175,13 @@ def get_active_users(customerid, http):
         break
 
       for user in userlist['users']:
-        if not user['suspended']:
-          users[user['primaryEmail']] = True
+        if not user['suspended'] and 'emails' in user:
+          for email in user['emails']:
+            users[email['address']] = {
+                'username': user['primaryEmail'].split('@', 1)[0],
+                'primaryEmail': user['primaryEmail'],
+                'orgUnitPath': user['orgUnitPath']
+            }
 
       if 'nextPageToken' in userlist:
         userlistreq = directoryservice.users().list_next(userlistreq, userlist)
@@ -211,7 +216,7 @@ def get_devices(active_users, http):
       lastActiveDate = device['activeTimeRanges'][len(device['activeTimeRanges'])-1]['date'] if 'activeTimeRanges' in device and len(device['activeTimeRanges']) >= 1 else None
       lastActive = datetime.strptime(lastActiveDate,'%Y-%m-%d') if lastActiveDate is not None else None
       annotatedUser = device.get('annotatedUser') or ''
-      recentUsers = [ u['email'] for u in device['recentUsers'] if 'email' in u] if 'recentUsers' in device else []
+      recentUsers = [ ((au['orgUnitPath'] + '/' + au['username']) if au else ue) for u in device['recentUsers'] if 'email' in u for ue in [u['email']] for au in [active_users[ue] if ue in active_users else None]] if 'recentUsers' in device else []
       recentUser = recentUsers[0] if recentUsers != [] else ''
       userActive = users is not None and annotatedUser in active_users
       recentUserActive = users is not None and recentUser in active_users
